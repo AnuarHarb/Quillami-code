@@ -18,6 +18,7 @@
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test --test-concurrency=1 test/*.test.ts",
+    "eval": "tsx evals/run.ts",
     "prepare": "npm run build"
   },
   "dependencies": {

@@ -119,21 +119,32 @@ src/models.ts           catálogo y alias
 src/banner.ts           el dibujo de la costa
 src/spinner.ts          “está pensando”
 test/                   tests del harness
+evals/                  tareas reales contra el modelo
 ```
 
 El núcleo cabe en el loop. Lo demás es el harness: que no se escape del workspace, que pregunte antes de romper algo, que no se ahogue de tokens.
 
-## Tests
+## Tests y evals
 
-Prueban el harness, no al modelo. No gastan API key.
+Los tests prueban el harness. No gastan API key.
 
 ```bash
 npm test
 ```
 
-Cubren tools, permisos, modelos, memoria y compactación.
+Los evals sí llaman al modelo: un repo temporal, una tarea, ¿el archivo quedó como se pedía?
 
-Los evals del agente (¿arregló el archivo que le pediste?) son el siguiente piso. Aún no están.
+```bash
+npm run eval
+```
+
+Hay cuatro: cambiar un greeting, crear `sum`, arreglar `double`, y respetar un `KILLAMI.md` que bloquea un archivo. Usan `KILLAMI_EVAL_MODEL` (default: haiku).
+
+## CI
+
+En cada push y pull request, GitHub Actions corre typecheck, tests y build.
+
+Si el repo tiene el secret `ANTHROPIC_API_KEY`, el job de evals también corre. Sin el secret, ese job se omite (sale “Evals omitidos”) y el CI no se pone rojo.
 
 ## Licencia
 
