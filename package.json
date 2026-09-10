@@ -2,6 +2,7 @@
   "name": "killami",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "bin": {
     "killami": "./dist/index.js"

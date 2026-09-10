@@ -21,9 +21,9 @@ export async function runTurn(
   userMessage: string,
   history: History,
   gate: PermissionGate,
+  model: string,
 ): Promise<void> {
   const client = new Anthropic();
-  const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
 
   history.push({ role: "user", content: userMessage });
 

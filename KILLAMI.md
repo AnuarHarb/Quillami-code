@@ -5,6 +5,7 @@ Agente de código en TypeScript. Se lanza con `killami` (usa `dist/`) o `npm sta
 - Entrada: `src/index.ts`
 - Loop: `src/agent/loop.ts`
 - Compactación: `src/agent/compact.ts` — si el historial pasa ~80k caracteres, resume lo viejo y deja la cola reciente
+- Modelos: `src/models.ts` — `killami --model haiku` o `/model` en la sesión
 - Tools: `src/tools.ts` (`read`, `write`, `edit`, `bash`, `grep`, `glob`, `ls`)
 - Permisos: `src/permissions.ts` — `write`, `edit` y `bash` preguntan s/n/a
 - Banner: `src/banner.ts`
