@@ -6,6 +6,8 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { dim, printBanner } from "./banner.js";
 import { runTurn, type History } from "./agent/loop.js";
+import { listMemoryFiles } from "./memory.js";
+import { createGate } from "./permissions.js";
 
 function loadEnvFile(envPath: string): void {
   if (!existsSync(envPath)) return;
@@ -41,10 +43,26 @@ async function main(): Promise<void> {
   }
 
   console.log(dim(`   workspace: ${process.cwd()}`));
+  const memoryFiles = listMemoryFiles();
+  console.log(
+    dim(
+      memoryFiles.length > 0
+        ? `   memoria: ${memoryFiles.join(", ")}`
+        : "   memoria: ninguna (puedes crear KILLAMI.md)",
+    ),
+  );
+  console.log(dim("   write, edit y bash piden permiso (s / n / a)."));
   console.log(dim("   Escribe /exit para salir.\n"));
 
   const rl = createInterface({ input: stdin, output: stdout });
   const history: History = [];
+  const gate = createGate(async (prompt) => {
+    try {
+      return await rl.question(prompt);
+    } catch {
+      return "n";
+    }
+  });
 
   try {
     while (true) {
@@ -59,7 +77,7 @@ async function main(): Promise<void> {
       if (input === "/exit" || input === "/quit") break;
 
       try {
-        await runTurn(input, history);
+        await runTurn(input, history, gate);
         console.log("");
       } catch (error) {
         console.error(error instanceof Error ? error.message : error);

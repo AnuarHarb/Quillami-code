@@ -1,4 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { compactIfNeeded } from "./compact.js";
+import { loadProjectMemory } from "../memory.js";
+import { type PermissionGate } from "../permissions.js";
+import { startSpinner } from "../spinner.js";
 import { executeTool, TOOL_DEFINITIONS } from "../tools.js";
 
 const MAX_ITERATIONS = 20;
@@ -7,17 +11,24 @@ const SYSTEM_PROMPT = `You are Killami Code, a local coding agent.
 You work inside the user's current workspace and use tools to inspect and edit files.
 Prefer small, targeted edits over rewriting whole files.
 If a tool fails, read the error and try another approach.
+write, edit, and bash need the user's approval. If they deny a tool, do not retry it unless they ask.
+Follow KILLAMI.md and AGENTS.md when they exist. If the user asks you to remember something about this repo, add it to KILLAMI.md.
 Respond in the user's language.`;
 
 export type History = Anthropic.MessageParam[];
 
-export async function runTurn(userMessage: string, history: History): Promise<void> {
+export async function runTurn(
+  userMessage: string,
+  history: History,
+  gate: PermissionGate,
+): Promise<void> {
   const client = new Anthropic();
   const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
 
   history.push({ role: "user", content: userMessage });
 
   for (let step = 0; step < MAX_ITERATIONS; step += 1) {
+    await compactIfNeeded(client, model, history);
     const response = await streamAssistant(client, model, history);
     history.push({ role: "assistant", content: response.content });
 
@@ -32,6 +43,17 @@ export async function runTurn(userMessage: string, history: History): Promise<vo
 
       const preview = summarizeInput(block.input);
       process.stdout.write(`\n· ${block.name}${preview ? ` ${preview}` : ""}\n`);
+
+      const allowed = await gate.authorize(block.name, block.input);
+      if (!allowed) {
+        results.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content:
+            "The user denied this action. Do not retry it unless they explicitly ask.",
+        });
+        continue;
+      }
 
       let output: string;
       try {
@@ -58,28 +80,52 @@ async function streamAssistant(
   model: string,
   history: History,
 ): Promise<Anthropic.Message> {
-  const stream = client.messages.stream({
-    model,
-    max_tokens: 8000,
-    system: SYSTEM_PROMPT,
-    tools: TOOL_DEFINITIONS,
-    messages: history,
-  });
+  const stopSpinner = startSpinner();
 
-  let started = false;
-  stream.on("text", (delta) => {
-    if (!started) {
+  try {
+    const stream = client.messages.stream({
+      model,
+      max_tokens: 8000,
+      system: buildSystemPrompt(),
+      tools: TOOL_DEFINITIONS,
+      messages: history,
+    });
+
+    let started = false;
+    stream.on("text", (delta) => {
+      if (!started) {
+        stopSpinner();
+        process.stdout.write("\n");
+        started = true;
+      }
+      process.stdout.write(delta);
+    });
+
+    const message = await stream.finalMessage();
+    stopSpinner();
+    if (started) {
       process.stdout.write("\n");
-      started = true;
     }
-    process.stdout.write(delta);
-  });
-
-  const message = await stream.finalMessage();
-  if (started) {
-    process.stdout.write("\n");
+    return message;
+  } catch (error) {
+    stopSpinner();
+    throw error;
   }
-  return message;
+}
+
+function buildSystemPrompt(): string {
+  const memory = loadProjectMemory();
+  if (!memory) {
+    return `${SYSTEM_PROMPT}
+
+There is no KILLAMI.md or AGENTS.md in this workspace yet. If the user wants durable notes about the project, create KILLAMI.md.`;
+  }
+
+  return `${SYSTEM_PROMPT}
+
+Project memory. Treat this as the source of truth for how this repo works:
+
+${memory}`;
 }
 
 function summarizeInput(input: unknown): string {
