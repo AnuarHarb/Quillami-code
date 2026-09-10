@@ -6,8 +6,8 @@
     "lib": ["ES2022"],
     "strict": true,
     "skipLibCheck": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
+    "outDir": "dist",
+    "rootDir": "src",
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
     "types": ["node"]

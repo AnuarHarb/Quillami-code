@@ -1,14 +1,22 @@
 {
-  "name": "killa-code",
+  "name": "killami",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "killami": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
+    "build": "tsc",
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0"

@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { executeTool, TOOL_DEFINITIONS } from "../tools.ts";
+import { executeTool, TOOL_DEFINITIONS } from "../tools.js";
 
 const MAX_ITERATIONS = 20;
 
-const SYSTEM_PROMPT = `You are killa-code, a local coding agent.
+const SYSTEM_PROMPT = `You are Killami Code, a local coding agent.
 You work inside the user's current workspace and use tools to inspect and edit files.
 Prefer small, targeted edits over rewriting whole files.
 If a tool fails, read the error and try another approach.
@@ -18,21 +18,8 @@ export async function runTurn(userMessage: string, history: History): Promise<vo
   history.push({ role: "user", content: userMessage });
 
   for (let step = 0; step < MAX_ITERATIONS; step += 1) {
-    const response = await client.messages.create({
-      model,
-      max_tokens: 8000,
-      system: SYSTEM_PROMPT,
-      tools: TOOL_DEFINITIONS,
-      messages: history,
-    });
-
+    const response = await streamAssistant(client, model, history);
     history.push({ role: "assistant", content: response.content });
-
-    for (const block of response.content) {
-      if (block.type === "text" && block.text.trim()) {
-        console.log(`\n${block.text}`);
-      }
-    }
 
     if (response.stop_reason !== "tool_use") {
       return;
@@ -43,13 +30,12 @@ export async function runTurn(userMessage: string, history: History): Promise<vo
     for (const block of response.content) {
       if (block.type !== "tool_use") continue;
 
-      const input = block.input;
-      const preview = summarizeInput(input);
-      console.log(`\n· ${block.name}${preview ? ` ${preview}` : ""}`);
+      const preview = summarizeInput(block.input);
+      process.stdout.write(`\n· ${block.name}${preview ? ` ${preview}` : ""}\n`);
 
       let output: string;
       try {
-        output = await executeTool(block.name, input);
+        output = await executeTool(block.name, block.input);
       } catch (error) {
         output = `Error: ${error instanceof Error ? error.message : String(error)}`;
       }
@@ -65,6 +51,35 @@ export async function runTurn(userMessage: string, history: History): Promise<vo
   }
 
   console.log("\nStopped: too many tool steps in this turn.");
+}
+
+async function streamAssistant(
+  client: Anthropic,
+  model: string,
+  history: History,
+): Promise<Anthropic.Message> {
+  const stream = client.messages.stream({
+    model,
+    max_tokens: 8000,
+    system: SYSTEM_PROMPT,
+    tools: TOOL_DEFINITIONS,
+    messages: history,
+  });
+
+  let started = false;
+  stream.on("text", (delta) => {
+    if (!started) {
+      process.stdout.write("\n");
+      started = true;
+    }
+    process.stdout.write(delta);
+  });
+
+  const message = await stream.finalMessage();
+  if (started) {
+    process.stdout.write("\n");
+  }
+  return message;
 }
 
 function summarizeInput(input: unknown): string {

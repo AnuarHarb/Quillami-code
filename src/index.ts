@@ -1,11 +1,13 @@
+#!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { runTurn, type History } from "./agent/loop.ts";
+import { dim, printBanner } from "./banner.js";
+import { runTurn, type History } from "./agent/loop.js";
 
-function loadEnv(): void {
-  const envPath = path.resolve(process.cwd(), ".env");
+function loadEnvFile(envPath: string): void {
   if (!existsSync(envPath)) return;
 
   for (const line of readFileSync(envPath, "utf8").split("\n")) {
@@ -21,24 +23,38 @@ function loadEnv(): void {
   }
 }
 
+function loadEnv(): void {
+  loadEnvFile(path.resolve(process.cwd(), ".env"));
+  loadEnvFile(path.join(homedir(), ".killami", ".env"));
+}
+
 async function main(): Promise<void> {
   loadEnv();
 
+  printBanner();
+
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("Missing ANTHROPIC_API_KEY. Copy .env.example to .env and add your key.");
+    console.error(
+      "Falta ANTHROPIC_API_KEY. Ponla en .env del proyecto o en ~/.killami/.env",
+    );
     process.exit(1);
   }
 
-  console.log("killa-code");
-  console.log(`workspace: ${process.cwd()}`);
-  console.log("Type /exit to quit.\n");
+  console.log(dim(`   workspace: ${process.cwd()}`));
+  console.log(dim("   Escribe /exit para salir.\n"));
 
   const rl = createInterface({ input: stdin, output: stdout });
   const history: History = [];
 
   try {
     while (true) {
-      const input = (await rl.question("> ")).trim();
+      let input: string;
+      try {
+        if (stdin.readableEnded) break;
+        input = (await rl.question("> ")).trim();
+      } catch {
+        break;
+      }
       if (!input) continue;
       if (input === "/exit" || input === "/quit") break;
 
