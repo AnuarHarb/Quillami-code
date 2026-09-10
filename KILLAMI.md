@@ -8,6 +8,7 @@ Agente de código en TypeScript. Se lanza con `killami` (usa `dist/`) o `npm sta
 - Modelos: `src/models.ts` — `killami --model haiku` o `/model` en la sesión
 - Tools: `src/tools.ts` (`read`, `write`, `edit`, `bash`, `grep`, `glob`, `ls`)
 - Permisos: `src/permissions.ts` — `write`, `edit` y `bash` preguntan s/n/a
+- Checkpoints: `src/checkpoint.ts` — foto de `write`/`edit` por turno; `/undo` restaura. `bash` no se deshace.
 - Banner: `src/banner.ts`
 - Spinner: `src/spinner.ts`
 

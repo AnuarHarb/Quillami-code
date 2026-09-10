@@ -3,6 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { dim, printBanner } from "./banner.js";
 import { runTurn, type History } from "./agent/loop.js";
+import { createCheckpointStore, type UndoResult } from "./checkpoint.js";
 import { loadEnv } from "./env.js";
 import { listMemoryFiles } from "./memory.js";
 import {
@@ -88,10 +89,12 @@ async function main(): Promise<void> {
   );
   console.log(dim(`   modelo: ${formatModelLine(model)}`));
   console.log(dim("   write, edit y bash piden permiso (s / n / a)."));
-  console.log(dim("   /model cambia el modelo. /exit para salir.\n"));
+  console.log(dim("   /model cambia el modelo. /undo restaura el último turno."));
+  console.log(dim("   /exit para salir.\n"));
 
   const rl = createInterface({ input: stdin, output: stdout });
   const history: History = [];
+  const checkpoints = createCheckpointStore();
   const gate = createGate(async (prompt) => {
     try {
       return await rl.question(prompt);
@@ -111,13 +114,17 @@ async function main(): Promise<void> {
       }
       if (!input) continue;
       if (input === "/exit" || input === "/quit") break;
+      if (input === "/undo") {
+        printUndo(await checkpoints.undo());
+        continue;
+      }
 
       const slash = handleSlash(input, model);
       model = slash.model;
       if (slash.handled) continue;
 
       try {
-        await runTurn(input, history, gate, model.id);
+        await runTurn(input, history, gate, model.id, checkpoints);
         console.log("");
       } catch (error) {
         console.error(error instanceof Error ? error.message : error);
@@ -128,4 +135,22 @@ async function main(): Promise<void> {
   }
 }
 
+function printUndo(result: UndoResult | null): void {
+  if (!result) {
+    console.log(dim("   no hay checkpoint para deshacer.\n"));
+    return;
+  }
+
+  const parts = [
+    ...result.restored.map((file) => `restauré ${file}`),
+    ...result.deleted.map((file) => `borré ${file}`),
+  ];
+  if (parts.length === 0) {
+    console.log(dim("   el último turno no había tocado archivos.\n"));
+    return;
+  }
+  console.log(dim(`   undo: ${parts.join(", ")}\n`));
+}
+
 await main();
+

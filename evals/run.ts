@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { runTurn, type History } from "../src/agent/loop.ts";
+import { createCheckpointStore } from "../src/checkpoint.ts";
 import { loadEnv } from "../src/env.ts";
 import { resolveModel } from "../src/models.ts";
 import { type PermissionGate } from "../src/permissions.ts";
@@ -62,7 +63,7 @@ async function runCase(
     }
 
     const history: History = [];
-    await runTurn(evalCase.prompt, history, allowAll, model);
+    await runTurn(evalCase.prompt, history, allowAll, model, createCheckpointStore());
 
     const problem = await evalCase.check(root);
     if (problem) {

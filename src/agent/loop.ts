@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { type CheckpointStore } from "../checkpoint.js";
 import { compactIfNeeded } from "./compact.js";
 import { loadProjectMemory } from "../memory.js";
 import { type PermissionGate } from "../permissions.js";
@@ -22,11 +23,27 @@ export async function runTurn(
   history: History,
   gate: PermissionGate,
   model: string,
+  checkpoints: CheckpointStore,
 ): Promise<void> {
   const client = new Anthropic();
 
   history.push({ role: "user", content: userMessage });
+  checkpoints.beginTurn();
 
+  try {
+    await runToolLoop(client, model, history, gate, checkpoints);
+  } finally {
+    checkpoints.finishTurn();
+  }
+}
+
+async function runToolLoop(
+  client: Anthropic,
+  model: string,
+  history: History,
+  gate: PermissionGate,
+  checkpoints: CheckpointStore,
+): Promise<void> {
   for (let step = 0; step < MAX_ITERATIONS; step += 1) {
     await compactIfNeeded(client, model, history);
     const response = await streamAssistant(client, model, history);
@@ -53,6 +70,13 @@ export async function runTurn(
             "The user denied this action. Do not retry it unless they explicitly ask.",
         });
         continue;
+      }
+
+      if (block.name === "write" || block.name === "edit") {
+        const target = filePathOf(block.input);
+        if (target) {
+          await checkpoints.snapshot(target);
+        }
       }
 
       let output: string;
@@ -126,6 +150,12 @@ There is no KILLAMI.md or AGENTS.md in this workspace yet. If the user wants dur
 Project memory. Treat this as the source of truth for how this repo works:
 
 ${memory}`;
+}
+
+function filePathOf(input: unknown): string | null {
+  if (!input || typeof input !== "object") return null;
+  const path = (input as Record<string, unknown>).path;
+  return typeof path === "string" && path.length > 0 ? path : null;
 }
 
 function summarizeInput(input: unknown): string {

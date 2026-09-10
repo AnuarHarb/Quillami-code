@@ -72,6 +72,15 @@ Mientras piensa ves un spinner (*Un momentico…*). El texto sale en streaming. 
 
 `read`, `ls`, `grep` y `glob` no preguntan. Solo miran.
 
+Si el turno quedó mal:
+
+```text
+> /undo
+   undo: restauré src/auth.ts
+```
+
+Eso restaura los archivos que `write` y `edit` tocaron en el último prompt. El chat no se borra. `bash` no entra en el checkpoint: un `rm` no se deshace así. `/undo` otra vez vuelve al turno anterior (hasta 50).
+
 ## Modelos
 
 Hoy todos son de Anthropic. Default: Sonnet 4.5.
@@ -109,9 +118,10 @@ Si le pides que se acuerde de algo, lo anota ahí (y te pide permiso para escrib
 ## Cómo está armado
 
 ```text
-src/index.ts            CLI, banner, /model
+src/index.ts            CLI, banner, /model, /undo
 src/agent/loop.ts       modelo → tools → resultado → repeat
 src/agent/compact.ts    resume lo viejo, deja la cola
+src/checkpoint.ts       fotos de write/edit por turno
 src/tools.ts            read write edit bash grep glob ls
 src/permissions.ts      s / n / a
 src/memory.ts           KILLAMI.md y AGENTS.md
