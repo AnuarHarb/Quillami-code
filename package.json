@@ -1,14 +1,32 @@
 {
-  "name": "killami",
+  "name": "killami-code",
   "version": "0.1.0",
-  "private": true,
+  "description": "Agente de código en la terminal, nacido en el Caribe colombiano.",
+  "author": "Anuar Harb",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "killami": "./dist/index.js"
+    "killami": "./dist/index.js",
+    "killami-code": "./dist/index.js"
   },
   "files": [
     "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AnuarHarb/killa-code.git"
+  },
+  "homepage": "https://github.com/AnuarHarb/killa-code#readme",
+  "bugs": {
+    "url": "https://github.com/AnuarHarb/killa-code/issues"
+  },
+  "keywords": [
+    "cli",
+    "coding-agent",
+    "agent",
+    "anthropic",
+    "caribe",
+    "colombia"
   ],
   "engines": {
     "node": ">=22"
@@ -19,7 +37,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test --test-concurrency=1 test/*.test.ts",
     "eval": "tsx evals/run.ts",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0"

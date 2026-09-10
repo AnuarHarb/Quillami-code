@@ -1,6 +1,6 @@
 # Killami Code
 
-Agente de código en TypeScript. Se lanza con `killami` (usa `dist/`) o `npm start`.
+Agente de código en TypeScript. Los usuarios lo instalan con `npm install -g killami-code`. El comando es `killami` (o `killami-code`). Aquí también vale `npm start`.
 
 - Entrada: `src/index.ts`
 - Loop: `src/agent/loop.ts`

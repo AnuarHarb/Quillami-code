@@ -23,33 +23,29 @@ El workspace es el directorio desde el que lanzas `killami`, no la carpeta de es
 - Node 22 o más
 - Una API key de [Anthropic](https://console.anthropic.com/)
 
-## Arranque
+## Instalar
 
 ```bash
-git clone https://github.com/AnuarHarb/killa-code.git
-cd killa-code
-npm install
-cp .env.example .env
+npm install -g killami-code
 ```
 
-Pega tu key en `.env` o, para usarlo desde cualquier carpeta, en `~/.killami/.env`:
+O sin instalarlo: `npx killami-code`. El comando sigue siendo `killami` (también vale `killami-code`).
+
+Necesitas Node 22+ y una API key de Anthropic. Ponla en `~/.killami/.env` (para usarlo en cualquier carpeta) o en el `.env` del proyecto:
 
 ```bash
 mkdir -p ~/.killami
-cp .env ~/.killami/.env
+echo 'ANTHROPIC_API_KEY=tu_key' > ~/.killami/.env
 ```
 
-Instala el comando y ábrelo donde vayas a trabajar:
+Luego, en el repo donde vas a trabajar:
 
 ```bash
-npm link
 cd ~/tu-proyecto
 killami
 ```
 
-En este repo, para desarrollar sin compilar: `npm start`.
-
-Si cambias el código, `npm run build` actualiza el bin de `killami`.
+Para desarrollar este repo: `npm install` y `npm start`. Si cambias el código, `npm run build` actualiza el bin.
 
 ## Uso
 
