@@ -11,6 +11,6 @@ Agente de código en TypeScript. Se lanza con `killami` (usa `dist/`) o `npm sta
 - Banner: `src/banner.ts`
 - Spinner: `src/spinner.ts`
 
-Después de cambiar el código, corre `npm run build` para que el comando `killami` se actualice.
+Los tests del harness: `npm test`. Después de cambiar el código, corre `npm run build` para que el comando `killami` se actualice.
 
 No commitear `.env`. La API key puede vivir en `.env` del proyecto o en `~/.killami/.env`.

@@ -48,7 +48,7 @@ export async function compactIfNeeded(
   }
 }
 
-function findTailStart(history: Anthropic.MessageParam[]): number {
+export function findTailStart(history: Anthropic.MessageParam[]): number {
   let chars = 0;
   let index = history.length;
 
