@@ -14,6 +14,7 @@ import {
   type ModelChoice,
 } from "./models.js";
 import { createGate } from "./permissions.js";
+import { createUsageLedger } from "./usage.js";
 
 function parseArgs(argv: string[]): { model?: string } {
   const args: { model?: string } = {};
@@ -90,11 +91,12 @@ async function main(): Promise<void> {
   console.log(dim(`   modelo: ${formatModelLine(model)}`));
   console.log(dim("   write, edit y bash piden permiso (s / n / a)."));
   console.log(dim("   /model cambia el modelo. /undo restaura el último turno."));
-  console.log(dim("   /exit para salir.\n"));
+  console.log(dim("   /usage muestra tokens y gasto. /exit para salir.\n"));
 
   const rl = createInterface({ input: stdin, output: stdout });
   const history: History = [];
   const checkpoints = createCheckpointStore();
+  const usage = createUsageLedger();
   const gate = createGate(async (prompt) => {
     try {
       return await rl.question(prompt);
@@ -118,13 +120,18 @@ async function main(): Promise<void> {
         printUndo(await checkpoints.undo());
         continue;
       }
+      if (input === "/usage" || input === "/tokens") {
+        console.log(`\n${usage.report()}\n`);
+        continue;
+      }
 
       const slash = handleSlash(input, model);
       model = slash.model;
       if (slash.handled) continue;
 
       try {
-        await runTurn(input, history, gate, model.id, checkpoints);
+        await runTurn(input, history, gate, model.id, checkpoints, usage);
+        console.log(dim(usage.turnLine()));
         console.log("");
       } catch (error) {
         console.error(error instanceof Error ? error.message : error);

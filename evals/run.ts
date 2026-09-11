@@ -5,6 +5,7 @@ import { createCheckpointStore } from "../src/checkpoint.ts";
 import { loadEnv } from "../src/env.ts";
 import { resolveModel } from "../src/models.ts";
 import { type PermissionGate } from "../src/permissions.ts";
+import { createUsageLedger } from "../src/usage.ts";
 import { withWorkspace } from "../test/workspace.ts";
 import { EVAL_CASES } from "./cases.ts";
 
@@ -63,7 +64,14 @@ async function runCase(
     }
 
     const history: History = [];
-    await runTurn(evalCase.prompt, history, allowAll, model, createCheckpointStore());
+    await runTurn(
+      evalCase.prompt,
+      history,
+      allowAll,
+      model,
+      createCheckpointStore(),
+      createUsageLedger({ persist: false }),
+    );
 
     const problem = await evalCase.check(root);
     if (problem) {

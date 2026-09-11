@@ -1,18 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { dim } from "../banner.js";
 import { startSpinner } from "../spinner.js";
+import { estimateTokens, formatTokenCount } from "../tokens.js";
+import { type UsageLedger } from "../usage.js";
 
-const COMPACT_AFTER_CHARS = 80_000;
-const KEEP_TAIL_CHARS = 28_000;
-const MAX_TRANSCRIPT_CHARS = 60_000;
-const MAX_MESSAGE_IN_TRANSCRIPT = 2_000;
+const COMPACT_AFTER_TOKENS = 20_000;
+const KEEP_TAIL_TOKENS = 7_000;
+const MAX_TRANSCRIPT_TOKENS = 15_000;
+const MAX_MESSAGE_IN_TRANSCRIPT_TOKENS = 500;
 
 export async function compactIfNeeded(
   client: Anthropic,
   model: string,
   history: Anthropic.MessageParam[],
+  usage?: UsageLedger,
 ): Promise<void> {
-  if (totalChars(history) < COMPACT_AFTER_CHARS) {
+  const before = totalTokens(history);
+  if (before < COMPACT_AFTER_TOKENS) {
     return;
   }
 
@@ -26,7 +30,7 @@ export async function compactIfNeeded(
   const stopSpinner = startSpinner("Compactando el historial…");
 
   try {
-    const summary = await summarizePrefix(client, model, prefix);
+    const summary = await summarizePrefix(client, model, prefix, usage);
     history.splice(
       0,
       history.length,
@@ -40,7 +44,10 @@ export async function compactIfNeeded(
       },
       ...tail,
     );
-    process.stdout.write(`${dim("  Historial compactado.")}\n`);
+    const after = totalTokens(history);
+    process.stdout.write(
+      `${dim(`  Historial compactado (${formatTokenCount(before)} → ${formatTokenCount(after)} tokens).`)}\n`,
+    );
   } catch {
     // If the summary call fails, keep the full history and continue.
   } finally {
@@ -49,12 +56,12 @@ export async function compactIfNeeded(
 }
 
 export function findTailStart(history: Anthropic.MessageParam[]): number {
-  let chars = 0;
+  let tokens = 0;
   let index = history.length;
 
-  while (index > 0 && chars < KEEP_TAIL_CHARS) {
+  while (index > 0 && tokens < KEEP_TAIL_TOKENS) {
     index -= 1;
-    chars += messageChars(history[index]);
+    tokens += messageTokens(history[index]);
   }
 
   while (index > 0 && isToolResultMessage(history[index])) {
@@ -72,6 +79,7 @@ async function summarizePrefix(
   client: Anthropic,
   model: string,
   prefix: Anthropic.MessageParam[],
+  usage?: UsageLedger,
 ): Promise<string> {
   const response = await client.messages.create({
     model,
@@ -85,6 +93,8 @@ async function summarizePrefix(
       },
     ],
   });
+
+  usage?.record(model, response.usage);
 
   const text = response.content
     .filter((block) => block.type === "text")
@@ -100,14 +110,16 @@ async function summarizePrefix(
 }
 
 function toTranscript(messages: Anthropic.MessageParam[]): string {
+  const maxMessageChars = MAX_MESSAGE_IN_TRANSCRIPT_TOKENS * 4;
+  const maxTranscriptChars = MAX_TRANSCRIPT_TOKENS * 4;
   const parts = messages.map((message) => {
-    const body = flattenContent(message.content).slice(0, MAX_MESSAGE_IN_TRANSCRIPT);
+    const body = flattenContent(message.content).slice(0, maxMessageChars);
     return `${message.role}: ${body}`;
   });
 
   let transcript = parts.join("\n\n");
-  if (transcript.length > MAX_TRANSCRIPT_CHARS) {
-    transcript = transcript.slice(-MAX_TRANSCRIPT_CHARS);
+  if (estimateTokens(transcript) > MAX_TRANSCRIPT_TOKENS) {
+    transcript = transcript.slice(-maxTranscriptChars);
   }
   return transcript;
 }
@@ -149,10 +161,10 @@ function isToolResultMessage(message: Anthropic.MessageParam): boolean {
   return message.content.some((block) => block.type === "tool_result");
 }
 
-function messageChars(message: Anthropic.MessageParam): number {
-  return flattenContent(message.content).length;
+function messageTokens(message: Anthropic.MessageParam): number {
+  return estimateTokens(flattenContent(message.content));
 }
 
-function totalChars(history: Anthropic.MessageParam[]): number {
-  return history.reduce((sum, message) => sum + messageChars(message), 0);
+function totalTokens(history: Anthropic.MessageParam[]): number {
+  return history.reduce((sum, message) => sum + messageTokens(message), 0);
 }

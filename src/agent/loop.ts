@@ -5,6 +5,7 @@ import { loadProjectMemory } from "../memory.js";
 import { type PermissionGate } from "../permissions.js";
 import { startSpinner } from "../spinner.js";
 import { executeTool, TOOL_DEFINITIONS } from "../tools.js";
+import { type UsageLedger } from "../usage.js";
 
 const MAX_ITERATIONS = 20;
 
@@ -24,14 +25,16 @@ export async function runTurn(
   gate: PermissionGate,
   model: string,
   checkpoints: CheckpointStore,
+  usage: UsageLedger,
 ): Promise<void> {
   const client = new Anthropic();
 
   history.push({ role: "user", content: userMessage });
   checkpoints.beginTurn();
+  usage.beginTurn();
 
   try {
-    await runToolLoop(client, model, history, gate, checkpoints);
+    await runToolLoop(client, model, history, gate, checkpoints, usage);
   } finally {
     checkpoints.finishTurn();
   }
@@ -43,10 +46,11 @@ async function runToolLoop(
   history: History,
   gate: PermissionGate,
   checkpoints: CheckpointStore,
+  usage: UsageLedger,
 ): Promise<void> {
   for (let step = 0; step < MAX_ITERATIONS; step += 1) {
-    await compactIfNeeded(client, model, history);
-    const response = await streamAssistant(client, model, history);
+    await compactIfNeeded(client, model, history, usage);
+    const response = await streamAssistant(client, model, history, usage);
     history.push({ role: "assistant", content: response.content });
 
     if (response.stop_reason !== "tool_use") {
@@ -103,6 +107,7 @@ async function streamAssistant(
   client: Anthropic,
   model: string,
   history: History,
+  usage: UsageLedger,
 ): Promise<Anthropic.Message> {
   const stopSpinner = startSpinner();
 
@@ -126,6 +131,7 @@ async function streamAssistant(
     });
 
     const message = await stream.finalMessage();
+    usage.record(model, message.usage);
     stopSpinner();
     if (started) {
       process.stdout.write("\n");

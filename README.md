@@ -109,14 +109,19 @@ También puedes poner `KILLAMI_MODEL=sonnet` en el `.env`. Prioridad: `--model` 
 
 En la raíz del repo que estés editando, crea un `KILLAMI.md` (o un `AGENTS.md`). Killami lo lee cada vez que piensa: cómo está armado el código, qué no tocar, convenciones.
 
-Si le pides que se acuerde de algo, lo anota ahí (y te pide permiso para escribirlo). Eso es memoria del repo. El historial de la charla es otra cosa: si se pone largo, se compacta solo.
+Si le pides que se acuerde de algo, lo anota ahí (y te pide permiso para escribirlo). Eso es memoria del repo. El historial de la charla es otra cosa: si pasa de ~20k tokens, se compacta solo.
+
+## Tokens y gasto
+
+Después de cada turno ves cuántos tokens entraron y salieron, lo de la sesión y un estimado en dólares (precios de lista de Anthropic). `/usage` muestra el desglose. El total se guarda en `~/.killami/usage.json`.
 
 ## Cómo está armado
 
 ```text
-src/index.ts            CLI, banner, /model, /undo
+src/index.ts            CLI, banner, /model, /undo, /usage
 src/agent/loop.ts       modelo → tools → resultado → repeat
-src/agent/compact.ts    resume lo viejo, deja la cola
+src/agent/compact.ts    resume lo viejo (~20k tokens)
+src/usage.ts            tokens y estimado en dólares
 src/checkpoint.ts       fotos de write/edit por turno
 src/tools.ts            read write edit bash grep glob ls
 src/permissions.ts      s / n / a
